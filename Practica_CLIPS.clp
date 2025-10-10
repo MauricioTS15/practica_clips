@@ -1,52 +1,50 @@
-;Base de hechos iniciales
-(deffacts atmosfera_mina
-    ;Los siguientes son los límites máximos permitidos de gases en la atmósfera de la mina:
-    ;Nitrógeno: 76% - 80%
-    ;Oxígeno: 19,5% - 23,5%
-    ;Grisú (metano): < 1% vol.
-    ;Hidrógeno: < 0,1% vol.
-    ;Óxidos nitrosos: < 25 ppm
-    ;Anhídrido carbónico: < 0,5%
-    ;Monóxido de carbono: < 50 ppm
-    ;Sulfuro de hidrógeno: < 10 ppm
-    ;Anhídrido sulfuroso: < 2 ppm
-    (concentracion_gases 
-        Nitrógeno N2 nivel_exposicion 70
-        Oxigeno O2 nivel_exposicion 20.9
-        Metano CH4 nivel_exposicion 1.5
-        Hidrogeno H2 nivel_exposicion 1
-        Monóxido-de-Carbono CO nivel_exposicion 25
-        Dióxido-de-Carbono CO2 nivel_exposicion 0,5
-        Sulfuro-de-Hidrogeno H2S nivel_exposicion 2
+;Base de hechos iniciales 
+(deffacts hechos_iniciales
+    ; Sensores del casco - estado inicial
+    (sensor-ultrasonico estado activo distancia 5.0 unidad metros)
+    (sensor-temperatura-humedad estado activo temperatura 26.0 humedad 75)
+    (sensor-casco estado activo)
+    
+    ; Límites de seguridad basados en documentos
+    (limites-seguridad
+        Oxigeno O2 nivel_minimo 19.5 nivel_maximo 23.5
+        Metano CH4 nivel_maximo 1.0
+        Monoxido-de-Carbono CO nivel_maximo 25
+        Dioxido-de-Carbono CO2 nivel_maximo 0.5
+        Sulfuro-de-Hidrogeno H2S nivel_maximo 5
+        Dioxido-de-Nitrogeno NO2 nivel_maximo 3
+        temperatura_maxima 32.0
+        humedad_maxima 85.0
+        indice_calor_maximo 41.0
     )
-    ;Hecho que nos ayudara a delimitar los hechos anteriores
-    (tipo_gases
-        Nitrógeno 
-        Oxigeno 
-        Metano 
-        Monóxido-de-Carbón 
-        Dióxido-de-Carbón 
-        Sulfuro-de-Hidrogeno 
-        Dióxido-de-Nitrógeno
+    ; Comodin
+    (gas Oxigeno)
+    (gas-toxico Monoxido-de-Carbono Dioxido-de-Carbono Sulfuro-de-Hidrogeno Nitrógeno)
+    (gas-combustible Metano Hidrogeno)
+    
+    ; Alertas y notificaciones
+    (sistema-alertas 
+        buzzer estado inactivo 
+        led-rojo estado inactivo 
+        pantalla-oled estado activo
+        equipo-medico notificacion inactiva
     )
-    ;temperatura de <25º        -> Baja
-    ;temperatura de 25º y 28º   -> Normal
-    ;temperatura de 28º y 32º   -> Alta
-    ;temperatura de >32º       -> Muy alta
-    (temperatura Baja Normal Alta Muy-Alta)
 
-    ;humedad de <70%        -> Baja
-    ;humedad de 70% y 85%   -> Normal
-    ;humedad de 85% y 90%   -> Alta
-    ;humedad de >90%        -> Muy alta
-    (humedad Baja Normal Alta Muy-Alta)
-    (sensor_ultrasonico )
-    (polvo_carbon )
-    (roca )
-    (equipos )
+    ; Mediciones actuales de gases
+    (concentracion-gas Oxigeno 20.9)
+    (concentracion-gas Metano 0.2)
+    (concentracion-gas Monoxido-de-Carbono 15)
+    (concentracion-gas Dioxido-de-Carbono 0.3)
+    (concentracion-gas Sulfuro-de-Hidrogeno 1)
+    (concentracion-gas Dioxido-de-Nitrogeno 1)
 )
 
-;Regla de EXPLOCION
+; REGLA 1: Evaluación de riesgo por deficiencia de oxígeno
+(defrule deficiencia-oxigeno
+(limites-seguridad $? ?gas ?simbolo nivel_exposicion ?porcentaje $?)
+(gas $? ?gas $?)
+
+; REGLA 2: Evaluación de riesgo por gases combustibles
 ;1.El Metano es inflamable, mezclado con aire en
 ;concentraciones entre el 5% y el 10% puede formar mezclas explosivas
 ;lo que puede llevar a producir Hidrogeno como subproducto.
@@ -55,12 +53,15 @@
 ;3.El polvo puede acumularse en suspensiones en el aire, creando 
 ;un riesgo de explosiones de polvo.
 
-;Regla de RIESGO TÉRMICO
+; REGLA 3: Evaluación de riesgo térmico por índice de calor
 ;Dependiendo de la temperatura en relacion con la humedad
 ;una persona tendra diferentes riesgos térmicos
 
-;Regla NIVEL DE EXPOSICIÓN A UN GAS
+; REGLA 4: Evaluación de riesgo por múltiples gases tóxicos
 
-;Regla MEZCLA DE GASES
+; REGLA 5: Evaluación de riesgo combinado temperatura y humedad alta
 
-;Regla SEGURIDAD DE LAS MÁQUINAS, HERRAMIENTAS, EQUIPOS
+; REGLA EXTRA PARA CONFLICTO (Estrategia de resolución)
+
+; REGLA 6: Priorización de riesgos críticos (CONFLICTO)
+
