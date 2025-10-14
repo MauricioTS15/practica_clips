@@ -1,4 +1,6 @@
-;Base de hechos iniciales 
+; ============================================================================
+;                               BASES DE HECHOS
+; ============================================================================
 (deffacts hechos_iniciales
     ; Sensores del casco - estado inicial
     (sensor-ultrasonico estado activo distancia 5.0 unidad metros)
@@ -17,7 +19,7 @@
         humedad_maxima 85.0
         indice_calor_maximo 41.0
     )
-    ; Comodin
+    ; Tipos de gases
     (gas Oxigeno)
     (gas-toxico Monoxido-de-Carbono Dioxido-de-Carbono Sulfuro-de-Hidrogeno Nitrógeno)
     (gas-combustible Metano Hidrogeno)
@@ -27,7 +29,7 @@
         buzzer estado inactivo 
         led-rojo estado inactivo 
         pantalla-oled estado activo
-        equipo-medico notificacion inactiva
+        info_equipo-medico estado inactiva
     )
 
     ; Mediciones actuales de gases
@@ -60,8 +62,4 @@
 ; REGLA 4: Evaluación de riesgo por múltiples gases tóxicos
 
 ; REGLA 5: Evaluación de riesgo combinado temperatura y humedad alta
-
-; REGLA EXTRA PARA CONFLICTO (Estrategia de resolución)
-
-; REGLA 6: Priorización de riesgos críticos (CONFLICTO)
 
