@@ -22,12 +22,11 @@
     ; Alertas y notificaciones
     (sistema-alertas 
         buzzer estado inactivo 
-        led-rojo estado inactivo
+        led-rojo estado inactivo 
+        pantalla-oled estado inactivo
+        info_equipo-medico estado inactivo 
     )
-    (sistema-notificaciones-medico
-        info-equipo-medico estado inactivo 
-    )
-    ; (sensores-monitoreo buzzer led-rojo info-equipo-medico)
+
     ; Mediciones actuales de gases
     (concentracion-gas Oxigeno 17)
     (concentracion-gas Metano 0.2)
@@ -43,52 +42,13 @@
 ;                     HECHOS INDEPENDIENTES PARA ACTIVACIÓN
 ; ============================================================================
 ; Prioridad de reglas
-; set-strategy <breath>
+; set-strategy <complexity>
 ; Sensores del casco - estado inicial
     ; (assert
             ; (sensor-ultrasonico estado activo)
             ; (sensor-temperatura-humedad estado activo)
             ; (sensor-casco estado activo)
-            ; (protocolo-emergencia protocolo estado activo)
     ; )
-; REGLA 1: Recoger valores iniciales
-(defrule inicio-casco
-    (sensor-ultrasonico estado activo)
-    (sensor-temperatura-humedad estado activo)
-    (sensor-casco estado activo)
-    =>
-    (assert(sistema-inicio monitoreo estado activo))
-    (printout t "SISTEMA DE MONITOREO ACTIVADO" crlf)
-)
-
-(defrule inicio-emergencia
-    (protocolo-emergencia protocolo estado activo)
-    =>
-    (assert(sistema-emergencia emergencia estado inactivo))
-    (printout t "PROTOCOLO DE EMERGENCIA ACTIVADO" crlf)
-)
-; ============================================================================
-;                               REGLAS
-; ============================================================================
-; REGLA 1: Evaluación de riesgo por deficiencia de oxígeno, 
-; avisa cuando el valor es menor o mayor que el minimo
-(defrule deficiencia-oxigeno
-    (sistema-inicio monitoreo estado activo)
-    (concentracion-gas ?nombre ?valor_medido)
-    (limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
-    (gas ?nombre)
-    (or
-        (test (> ?minimo ?valor_medido ))
-        (test (< ?maximo ?valor_medido ))
-    )
-    ?ind1 <- (sistema-alertas $?antes ?tipo estado ?alerta $?despues)
-    (test(eq ?alerta inactivo))
-    =>
-    (retract ?ind1)
-    (assert(sistema-alerta-activo $?antes ?tipo estado activo $?despues))
-    (assert (alerta oxigeno))
-    (printout t "ALERTA OXIGENO: " ?nombre " = " ?valor_medido  crlf)
-)
 ; REGLA 2: Evaluación de riesgo por gases combustibles
 ;1.El Metano es inflamable, mezclado con aire en
 ;concentraciones entre el 5% y el 10% puede formar mezclas explosivas
@@ -98,11 +58,24 @@
 ;3.El polvo puede acumularse en suspensiones en el aire, creando 
 ;un riesgo de explosiones de polvo.
 
-; REGLA 3: Evaluación de riesgo térmico por índice de calor
-;Dependiendo de la temperatura en relacion con la humedad
-;una persona tendra diferentes riesgos térmicos
+;Conflicto
+;Avisa al trabajador activando otra alerta de sistema-alertas
+(defrule gases-combustibles-avisa-trabajador
+(limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo)
+(gas-combustible $? ?nombre $?)
+(concentracion-gas ?nombre ?valor_medido)
+(test (> ?valor_medido ?maximo))
+=>
+(assert (alerta gases_alta_combustión))
+(printout t "Aviso al trabajador que esta en zona de altos gases de combustión" crlf)
+)
 
-; REGLA 4: Evaluación de riesgo por múltiples gases tóxicos
-
-; REGLA 5: Evaluación de riesgo combinado temperatura y humedad alta
-
+;Avisa al medico que el trabajador esta en zona peligrosa
+(defrule gases-combustibles-aviso-medico
+(limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo)
+(gas-combustible $? ?nombre $?)
+(concentracion-gas ?nombre ?valor_medido)
+(test (> ?valor_medido ?maximo))
+=>
+(printout t "Aviso al medico que el trabajador esta en zona de altos gases de combustión" crlf)
+)

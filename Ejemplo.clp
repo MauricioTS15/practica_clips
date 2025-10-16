@@ -203,3 +203,11 @@
     (retract ?a)
     (assert (ambientes ?ubicacion temperatura ?temp humedad ?hr indice-calor ?nuevo-indice categoria APACIBLE))
     (printout t "Calculado índice de calor: " ?nuevo-indice "°C para " ?ubicacion crlf))
+
+
+(assert
+            (sensor-ultrasonico estado activo)
+            (sensor-temperatura-humedad estado activo)
+            (sensor-casco estado activo)
+            (protocolo-emergencia protocolo estado activo)
+    )

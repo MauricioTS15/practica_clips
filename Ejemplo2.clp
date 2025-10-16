@@ -1,230 +1,148 @@
 ;; =============================================
-;; SISTEMA EXPERTO PARA CASCO INTELIGENTE MINERO
+;; SISTEMA EXPERTO PARA MONITOREO MINERO
 ;; =============================================
 
 (deffacts hechos_iniciales
-    ;; Sensores del casco - estado inicial
-    (sensor-ultrasonico estado activo distancia 5.0 unidad metros)
-    (sensor-temperatura-humedad estado activo temperatura 26.0 humedad 75)
-    (sensor-casco estado activo)
-    (sensor-oxigeno estado activo concentracion 20.9 unidad porcentaje)
-    
-    ;; Límites de seguridad basados en documentos
+    ; Límites de seguridad basados en documentos
     (limites-seguridad
         Oxigeno O2 nivel_minimo 19.5 nivel_maximo 23.5
-        Metano CH4 nivel_maximo 1.0
-        Monoxido-de-Carbono CO nivel_maximo 25
-        Dioxido-de-Carbono CO2 nivel_maximo 0.5
-        Sulfuro-de-Hidrogeno H2S nivel_maximo 5
-        Dioxido-de-Nitrogeno NO2 nivel_maximo 3
-        temperatura_maxima 32.0
-        humedad_maxima 85.0
-        indice_calor_maximo 41.0
+        Metano CH4 nivel_minimo 0.5 nivel_maximo 1.0 
+        Monoxido-de-Carbono CO nivel_minimo 25.0 nivel_maximo 50.0
+        Dioxido-de-Carbono CO2 nivel_minimo 0.5 nivel_maximo 1.0
+        Sulfuro-de-Hidrogeno H2S nivel_minimo 1.0 nivel_maximo 5.0
+        Oxido-de-Nitrogeno NO2 nivel_minimo 1.0 nivel_maximo 20.0
+        Temperatura T nivel_minimo 15.0 nivel_maximo 32.0
+        Humedad H nivel_minimo 30.0 nivel_maximo 85.0
     )
-
-    (gas Oxigeno Metano Monoxido-de-Carbono Dioxido-de-Carbono Sulfuro-de-Hidrogeno Dioxido-de-Nitrogeno)
-    (gas-toxico Monoxido-de-Carbono Dioxido-de-Carbono Sulfuro-de-Hidrogeno Dioxido-de-Nitrogeno)
+    ; Tipos de gases
+    (gas Oxigeno)
+    (gas-toxico Monoxido-de-Carbono Dioxido-de-Carbono Sulfuro-de-Hidrogeno Oxido-de-Nitrogeno)
     (gas-combustible Metano Hidrogeno)
+    (ambiente Temperatura Humedad)
     
-    ;; Alertas y notificaciones
+    ; Alertas y notificaciones
     (sistema-alertas 
         buzzer estado inactivo 
         led-rojo estado inactivo 
-        pantalla-oled estado activo
-        equipo-medico notificacion inactiva
+        pantalla-oled estado inactivo
+        info_equipo-medico estado inactivo 
     )
 
-    ;; Mediciones actuales de gases
-    (concentracion-gas Oxigeno 20.9)
+    ; Mediciones actuales de gases
+    (concentracion-gas Oxigeno 17)
     (concentracion-gas Metano 0.2)
-    (concentracion-gas Monoxido-de-Carbono 15)
+    (concentracion-gas Monoxido-de-Carbono 15.0)
     (concentracion-gas Dioxido-de-Carbono 0.3)
-    (concentracion-gas Sulfuro-de-Hidrogeno 1)
-    (concentracion-gas Dioxido-de-Nitrogeno 1)
+    (concentracion-gas Sulfuro-de-Hidrogeno 1.0)
+    (concentracion-gas Oxido-de-Nitrogeno 1.0)
+    (concentracion-ambiente Temperatura 15.0)
+    (concentracion-ambiente Humedad 30.0)
 )
 
-;; -----------------------------------------------------
-;; 2. CASOS DE USO - HECHOS INDEPENDIENTES PARA ACTIVACIÓN
-;; -----------------------------------------------------
+;; =============================================
+;; 1. CASOS DE USO - HECHOS INDEPENDIENTES
+;; =============================================
 
-(defrule activar-monitoreo-continuo
-    (iniciar-monitoreo-continuo)
+(defrule activar-sistema-casco
+    (sensor-casco estado activo)
+    (sensor-temperatura-humedad estado activo)
+    (sensor-ultrasonico estado activo)
     =>
-    (printout t "=== SISTEMA DE MONITOREO CONTINUO ACTIVADO ===" crlf)
-    (assert (evaluar-riesgos-gases))
-    (assert (evaluar-riesgos-termicos)))
+    (printout t "=== SISTEMA DE CASCO INTELIGENTE ACTIVADO ===" crlf)
+    (printout t "Todos los sensores operativos" crlf)
+    (assert (iniciar-monitoreo-continuo))
+    (assert (verificar-sensores)))
 
 (defrule activar-protocolo-emergencia
     (protocolo-emergencia tipo ?tipo)
     =>
     (printout t "=== PROTOCOLO DE EMERGENCIA ACTIVADO: " ?tipo " ===" crlf)
-    (assert (activar-sistema-alertas-completo)))
+    (assert (activar-sistema-alertas-completo))
+    (assert (notificar-equipo-medico)))
 
-;; -----------------------------------------------------
-;; 3. REGLAS GENÉRICAS CON COMODINES
-;; -----------------------------------------------------
+;; =============================================
+;; 2. REGLAS GENÉRICAS CON COMODINES
+;; =============================================
 
-;; REGLA 1: Evaluación de riesgo por deficiencia de oxígeno CRÍTICA
-(defrule evaluar-riesgo-deficiencia-oxigeno-critica
-    (concentracion-gas Oxigeno ?conc-oxigeno)
-    (limites-seguridad Oxigeno O2 nivel_minimo ?limite-min)
-    (test (< ?conc-oxigeno 16.0))
+;; REGLA 1: Evaluación de niveles mínimos peligrosos
+(defrule evaluar-nivel-minimo-peligroso
+    (concentracion-gas ?gas ?valor)
+    (limites-seguridad ?gas ?codigo nivel_minimo ?minimo nivel_maximo ?maximo)
+    (test (< ?valor ?minimo))
     =>
-    (assert (alerta tipo asfixia nivel critico valor ?conc-oxigeno mensaje "DEFICIENCIA CRÍTICA DE OXÍGENO - EVACUAR INMEDIATAMENTE"))
-    (assert (activar-buzzer frecuencia maxima))
-    (assert (activar-led-rojo color rojo-parpadeante))
-    (printout t "ALERTA OXÍGENO CRÍTICA: " ?conc-oxigeno "% < 16%" crlf))
-
-;; REGLA 1b: Evaluación de riesgo por deficiencia de oxígeno ALTA
-(defrule evaluar-riesgo-deficiencia-oxigeno-alta
-    (concentracion-gas Oxigeno ?conc-oxigeno)
-    (limites-seguridad Oxigeno O2 nivel_minimo ?limite-min)
-    (test (and (>= ?conc-oxigeno 16.0) (< ?conc-oxigeno ?limite-min)))
-    =>
-    (assert (alerta tipo asfixia nivel alto valor ?conc-oxigeno mensaje "DEFICIENCIA DE OXÍGENO - VENTILAR ÁREA"))
+    (assert (alerta tipo nivel-minimo nivel critico parametro ?gas valor ?valor limite ?minimo))
     (assert (activar-buzzer frecuencia alta))
     (assert (activar-led-rojo color rojo))
-    (printout t "ALERTA OXÍGENO: " ?conc-oxigeno "% < " ?limite-min "%" crlf))
+    (printout t "ALERTA NIVEL MÍNIMO: " ?gas " = " ?valor " < " ?minimo crlf))
 
-;; REGLA 2: Evaluación de riesgo por gases combustibles CRÍTICO
-(defrule evaluar-riesgo-gases-combustibles-critico
-    (concentracion-gas ?gas ?concentracion)
-    (gas-combustible ?gas)
-    (limites-seguridad ?gas ?formula nivel_maximo ?limite)
-    (test (> ?concentracion (* ?limite 2.0)))
+;; REGLA 2: Evaluación de niveles máximos peligrosos
+(defrule evaluar-nivel-maximo-peligroso
+    (concentracion-gas ?gas ?valor)
+    (limites-seguridad ?gas ?codigo nivel_minimo ?minimo nivel_maximo ?maximo)
+    (test (> ?valor ?maximo))
     =>
-    (assert (alerta tipo explosion nivel critico valor ?concentracion mensaje "GAS COMBUSTIBLE CRÍTICO - EVACUAR INMEDIATAMENTE"))
-    (assert (activar-buzzer frecuencia maxima))
-    (assert (activar-led-rojo color rojo-parpadeante))
-    (printout t "ALERTA GAS COMBUSTIBLE CRÍTICO: " ?gas " = " ?concentracion crlf))
-
-;; REGLA 2b: Evaluación de riesgo por gases combustibles ALTO
-(defrule evaluar-riesgo-gases-combustibles-alto
-    (concentracion-gas ?gas ?concentracion)
-    (gas-combustible ?gas)
-    (limites-seguridad ?gas ?formula nivel_maximo ?limite)
-    (test (and (> ?concentracion ?limite) (<= ?concentracion (* ?limite 2.0))))
-    =>
-    (assert (alerta tipo explosion nivel alto valor ?concentracion mensaje "GAS COMBUSTIBLE DETECTADO - ELIMINAR FUENTES DE IGNICIÓN"))
+    (assert (alerta tipo nivel-maximo nivel critico parametro ?gas valor ?valor limite ?maximo))
     (assert (activar-buzzer frecuencia alta))
-    (assert (activar-led-rojo color rojo))
-    (printout t "ALERTA GAS COMBUSTIBLE: " ?gas " = " ?concentracion " > " ?limite crlf))
-
-;; REGLA 3: Evaluación de riesgo térmico por índice de calor CRÍTICO
-(defrule evaluar-riesgo-termico-indice-calor-critico
-    (sensor-temperatura-humedad estado activo temperatura ?temp humedad ?hr)
-    (limites-seguridad indice_calor_maximo ?limite-ic)
-    (test (> ?temp 35))
-    =>
-    (assert (alerta tipo termico nivel critico valor ?temp mensaje "CONDICIONES TÉRMICAS CRÍTICAS - EVACUAR"))
-    (assert (activar-buzzer frecuencia maxima))
     (assert (activar-led-rojo color rojo-parpadeante))
-    (printout t "ALERTA TÉRMICA CRÍTICA: Temperatura " ?temp "°C" crlf))
+    (printout t "ALERTA NIVEL MÁXIMO: " ?gas " = " ?valor " > " ?maximo crlf))
 
-;; REGLA 3b: Evaluación de riesgo térmico por índice de calor ALTO
-(defrule evaluar-riesgo-termico-indice-calor-alto
-    (sensor-temperatura-humedad estado activo temperatura ?temp humedad ?hr)
-    (limites-seguridad indice_calor_maximo ?limite-ic)
-    (test (and (> ?temp 32) (<= ?temp 35)))
+;; REGLA 3: Evaluación de condiciones ambientales extremas
+(defrule evaluar-condiciones-ambientales-extremas
+    (concentracion-ambiente ?parametro ?valor)
+    (limites-seguridad ?parametro ?codigo nivel_minimo ?minimo nivel_maximo ?maximo)
+    (test (or (< ?valor ?minimo) (> ?valor ?maximo)))
     =>
-    (assert (alerta tipo termico nivel alto valor ?temp mensaje "CONDICIONES TÉRMICAS PELIGROSAS - REDUCIR EXPOSICIÓN"))
-    (assert (activar-buzzer frecuencia alta))
-    (assert (activar-led-rojo color rojo))
-    (printout t "ALERTA TÉRMICA: Temperatura " ?temp "°C > " ?limite-ic "°C" crlf))
+    (assert (alerta tipo ambiental nivel alto parametro ?parametro valor ?valor))
+    (assert (activar-buzzer frecuencia media))
+    (assert (activar-pantalla-oled mensaje ?parametro))
+    (printout t "ALERTA AMBIENTAL: " ?parametro " = " ?valor crlf))
 
-;; REGLA 4: Evaluación de riesgo por múltiples gases tóxicos
-(defrule evaluar-riesgo-multiples-gases-toxicos
-    (concentracion-gas ?gas1 ?conc1)
-    (concentracion-gas ?gas2 ?conc2)
+;; REGLA 4: Detección de múltiples gases tóxicos en niveles peligrosos
+(defrule deteccion-multiples-gases-toxicos
+    (concentracion-gas ?gas1 ?valor1)
+    (concentracion-gas ?gas2 ?valor2)
     (gas-toxico ?gas1)
     (gas-toxico ?gas2)
-    (limites-seguridad ?gas1 ?formula1 nivel_maximo ?limite1)
-    (limites-seguridad ?gas2 ?formula2 nivel_maximo ?limite2)
-    (test (and (neq ?gas1 ?gas2) (> ?conc1 ?limite1) (> ?conc2 ?limite2)))
+    (limites-seguridad ?gas1 ?codigo1 nivel_minimo ?min1 nivel_maximo ?max1)
+    (limites-seguridad ?gas2 ?codigo2 nivel_minimo ?min2 nivel_maximo ?max2)
+    (test (and (neq ?gas1 ?gas2) (> ?valor1 ?max1) (> ?valor2 ?max2)))
     =>
-    (assert (alerta tipo toxicidad-multiple nivel critico valor 0 mensaje "MÚLTIPLES GASES TÓXICOS DETECTADOS - EVACUACIÓN INMEDIATA"))
+    (assert (alerta-multiple tipo gases-toxicos nivel critico gases ?gas1 ?gas2))
     (assert (activar-buzzer frecuencia maxima))
     (assert (activar-led-rojo color rojo-parpadeante))
-    (printout t "ALERTA MÚLTIPLE: " ?gas1 " (" ?conc1 ") + " ?gas2 " (" ?conc2 ") - EVACUAR" crlf))
+    (assert (activar-info-equipo-medico estado activo))
+    (printout t "ALERTA MÚLTIPLE GASES TÓXICOS: " ?gas1 " + " ?gas2 crlf))
 
-;; REGLA 5: Evaluación de riesgo combinado temperatura y humedad alta CRÍTICO
-(defrule evaluar-riesgo-combinado-temperatura-humedad-critico
-    (sensor-temperatura-humedad estado activo temperatura ?temp humedad ?hr)
-    (limites-seguridad temperatura_maxima ?limite-temp humedad_maxima ?limite-hr)
-    (test (and (> ?temp 35) (> ?hr 90)))
+;; REGLA 5: Evaluación de gases combustibles en nivel explosivo
+(defrule evaluar-gas-combustible-explosivo
+    (concentracion-gas ?gas ?valor)
+    (gas-combustible ?gas)
+    (limites-seguridad ?gas ?codigo nivel_minimo ?minimo nivel_maximo ?maximo)
+    (test (> ?valor ?maximo))
     =>
-    (assert (alerta tipo ambiental nivel critico temperatura ?temp humedad ?hr mensaje "CONDICIONES AMBIENTALES CRÍTICAS - EVACUAR"))
+    (assert (alerta tipo gas-combustible nivel critico parametro ?gas valor ?valor))
     (assert (activar-buzzer frecuencia maxima))
     (assert (activar-led-rojo color rojo-parpadeante))
-    (printout t "ALERTA AMBIENTAL CRÍTICA: Temp " ?temp "°C + HR " ?hr "%" crlf))
+    (assert (activar-pantalla-oled mensaje "GAS COMBUSTIBLE"))
+    (printout t "ALERTA GAS COMBUSTIBLE EXPLOSIVO: " ?gas " = " ?valor crlf))
 
-;; REGLA 5b: Evaluación de riesgo combinado temperatura y humedad alta ALTO
-(defrule evaluar-riesgo-combinado-temperatura-humedad-alto
-    (sensor-temperatura-humedad estado activo temperatura ?temp humedad ?hr)
-    (limites-seguridad temperatura_maxima ?limite-temp humedad_maxima ?limite-hr)
-    (test (and (>= ?temp ?limite-temp) (>= ?hr ?limite-hr)))
-    =>
-    (assert (alerta tipo ambiental nivel alto temperatura ?temp humedad ?hr mensaje "CONDICIONES AMBIENTALES EXTREMAS - ALTA TEMPERATURA Y HUMEDAD"))
-    (assert (activar-buzzer frecuencia alta))
-    (assert (activar-led-rojo color rojo))
-    (printout t "ALERTA AMBIENTAL: Temp " ?temp "°C + HR " ?hr "%" crlf))
+;; =============================================
+;; 3. CONFLICTO DE REGLAS - ESTRATEGIA DE RESOLUCIÓN
+;; =============================================
 
-;; -----------------------------------------------------
-;; REGLA EXTRA PARA CONFLICTO (Estrategia de resolución)
-;; -----------------------------------------------------
-
-;; REGLA 6: Priorización de alertas por nivel de criticidad
-(defrule priorizacion-alertas-criticas
+;; REGLA 6: Priorización de alertas críticas (CONFLICTO)
+(defrule priorizar-alertas-criticas
     ?a1 <- (activar-buzzer frecuencia maxima)
-    ?a2 <- (activar-buzzer frecuencia ?freq2)
-    (test (neq ?freq2 'maxima))
+    ?a2 <- (activar-buzzer frecuencia ?freq)
+    (test (neq ?freq 'maxima))
     =>
     (retract ?a2)
-    (printout t "PRIORIZACIÓN: Alerta MÁXIMA tiene precedencia sobre frecuencia " ?freq2 crlf)
-    (assert (activar-buzzer frecuencia ?freq2 prioridad baja)))
+    (printout t "PRIORIZACIÓN: Alerta MÁXIMA tiene precedencia sobre " ?freq crlf)
+    (assert (activar-buzzer frecuencia ?freq prioridad baja)))
 
-;; -----------------------------------------------------
-;; REGLAS DE ACTUALIZACIÓN SENSORES
-;; -----------------------------------------------------
-
-(defrule actualizar-concentracion-oxigeno
-    ?g <- (concentracion-gas Oxigeno ?old-conc)
-    (nueva-concentracion-gas Oxigeno ?new-conc)
-    =>
-    (retract ?g)
-    (assert (concentracion-gas Oxigeno ?new-conc))
-    (printout t "Oxígeno actualizado: " ?old-conc "% -> " ?new-conc "%" crlf))
-
-(defrule actualizar-concentracion-gas-combustible
-    ?g <- (concentracion-gas ?gas ?old-conc)
-    (gas-combustible ?gas)
-    (nueva-concentracion-gas ?gas ?new-conc)
-    =>
-    (retract ?g)
-    (assert (concentracion-gas ?gas ?new-conc))
-    (printout t "Gas combustible " ?gas " actualizado: " ?old-conc " -> " ?new-conc crlf))
-
-(defrule actualizar-concentracion-gas-toxico
-    ?g <- (concentracion-gas ?gas ?old-conc)
-    (gas-toxico ?gas)
-    (nueva-concentracion-gas ?gas ?new-conc)
-    =>
-    (retract ?g)
-    (assert (concentracion-gas ?gas ?new-conc))
-    (printout t "Gas tóxico " ?gas " actualizado: " ?old-conc " -> " ?new-conc crlf))
-
-(defrule actualizar-temperatura-humedad
-    ?s <- (sensor-temperatura-humedad estado ?estado temperatura ?old-temp humedad ?old-hr)
-    (nueva-medicion-temperatura-humedad temperatura ?new-temp humedad ?new-hr)
-    =>
-    (retract ?s)
-    (assert (sensor-temperatura-humedad estado ?estado temperatura ?new-temp humedad ?new-hr))
-    (printout t "Temperatura actualizada: " ?old-temp "°C -> " ?new-temp "°C" crlf)
-    (printout t "Humedad actualizada: " ?old-hr "% -> " ?new-hr "%" crlf))
-
-;; -----------------------------------------------------
+;; =============================================
 ;; REGLAS DE CONTROL DE ACTUADORES
-;; -----------------------------------------------------
+;; =============================================
 
 (defrule controlar-buzzer
     (activar-buzzer frecuencia ?freq)
@@ -244,8 +162,53 @@
 
 (defrule controlar-pantalla-oled
     (activar-pantalla-oled mensaje ?msg)
-    ?s <- (sistema-alertas pantalla-oled estado activo mensaje ?old-msg ?resto)
+    ?s <- (sistema-alertas pantalla-oled estado inactivo ?resto)
     =>
     (retract ?s)
     (assert (sistema-alertas pantalla-oled estado activo mensaje ?msg ?resto))
     (printout t "PANTALLA OLED: " ?msg crlf))
+
+(defrule controlar-info-equipo-medico
+    (activar-info-equipo-medico estado activo)
+    ?s <- (sistema-alertas info_equipo-medico estado inactivo ?resto)
+    =>
+    (retract ?s)
+    (assert (sistema-alertas info_equipo-medico estado activo ?resto))
+    (printout t "EQUIPO MÉDICO: Notificado" crlf))
+
+;; =============================================
+;; REGLAS DE MONITOREO CONTINUO
+;; =============================================
+
+(defrule iniciar-monitoreo-continuo
+    (iniciar-monitoreo-continuo)
+    =>
+    (printout t "--- INICIANDO MONITOREO CONTINUO ---" crlf)
+    (assert (evaluar-condiciones-ambientales))
+    (assert (verificar-niveles-gases)))
+
+(defrule evaluar-condiciones-ambientales
+    (evaluar-condiciones-ambientales)
+    =>
+    (printout t "--- EVALUANDO CONDICIONES AMBIENTALES ---" crlf)
+    (assert (verificar-parametro-ambiente Temperatura))
+    (assert (verificar-parametro-ambiente Humedad)))
+
+(defrule verificar-niveles-gases
+    (verificar-niveles-gases)
+    =>
+    (printout t "--- VERIFICANDO NIVELES DE GASES ---" crlf)
+    (assert (verificar-gas Oxigeno))
+    (assert (verificar-gas Metano))
+    (assert (verificar-gas Monoxido-de-Carbono))
+    (assert (verificar-gas Dioxido-de-Carbono))
+    (assert (verificar-gas Sulfuro-de-Hidrogeno))
+    (assert (verificar-gas Oxido-de-Nitrogeno)))
+
+(defrule verificar-sensores
+    (verificar-sensores)
+    =>
+    (printout t "--- VERIFICANDO ESTADO DE SENSORES ---" crlf)
+    (assert (sensor-operativo sensor-casco))
+    (assert (sensor-operativo sensor-temperatura-humedad))
+    (assert (sensor-operativo sensor-ultrasonico)))
