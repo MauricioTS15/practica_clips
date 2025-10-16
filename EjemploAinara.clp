@@ -79,3 +79,36 @@
 =>
 (printout t "Aviso al medico que el trabajador esta en zona de altos gases de combustión" crlf)
 )
+; REGLA 6: Evaluación de tendencia peligrosa
+(defrule tendencia-peligrosa-incremento-gases
+    ; Detecta cuando los gases están aumentando rápidamente
+    (concentracion-gas ?gas ?valor-actual)
+    ?historial <- (historial-gas ?gas ?valor-anterior ?timestamp)
+    (limites-seguridad $? ?gas ?simbolo nivel_minimo ?min nivel_maximo ?max $?)
+    (test (and
+        (> ?valor-actual ?valor-anterior)
+        (> (/ (- ?valor-actual ?valor-anterior) ?valor-anterior) 0.3)  ; 30% de aumento
+        (> ?valor-actual ?min)  ; Ya está por encima del mínimo seguro
+    ))
+    =>
+    (printout t "ALERTA: Incremento rápido de " ?gas " - " 
+              ?valor-anterior " -> " ?valor-actual " (" 
+              (format nil "%.1f" (* (/ (- ?valor-actual ?valor-anterior) ?valor-anterior) 100)) 
+              "%)" crlf)
+)
+; REGLA 9: Detección de fallos en cascada
+(defrule fallo-cascada-sensores
+    ; Detecta cuando múltiples sensores fallan simultáneamente
+    (sensor-ultrasonico sensor estado inactivo)
+    (sensor-temperatura-humedad temperatura estado inactivo)
+    (sensor-casco casco estado inactivo)
+    (or
+        (concentracion-gas ?gas ?valor)
+        (concentracion-ambiente ?param ?valor-amb)
+    )
+    =>
+    (printout t "EMERGENCIA: Fallo múltiple de sensores - " 
+              "Sistema de monitoreo comprometido" crlf)
+    (assert (activar-protocolo-reserva))
+    (assert (notificar-supervisor fallo-sensores-multiple))
+)
