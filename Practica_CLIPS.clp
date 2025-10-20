@@ -24,17 +24,27 @@
     (sistema-notificaciones-medico info-equipo-medico estado inactivo)
     (sistema-actuadores buzzer led-rojo info-equipo-medico)
 
+<<<<<<< HEAD
     ; Estado de los sensores principales
+=======
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
     (sensor-ultrasonico sensor estado activo)
     (sensor-temperatura-humedad temperatura estado activo humedad estado activo)
     (sensor-casco casco estado activo)
     (protocolo-emergencia protocolo estado activo)
 
+<<<<<<< HEAD
     ; Detección del nivel de gases
     (concentracion-gas Oxigeno 20)
     (concentracion-gas Metano 0.70)
     (concentracion-gas Monoxido-de-Carbono 30.0)
     (concentracion-gas Dioxido-de-Carbono 0.70)
+=======
+    (concentracion-gas Oxigeno 17)
+    (concentracion-gas Metano 50.0)
+    (concentracion-gas Monoxido-de-Carbono 15.0)
+    (concentracion-gas Dioxido-de-Carbono 0.3)
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
     (concentracion-gas Sulfuro-de-Hidrogeno 1.0)
     (concentracion-gas Dioxido-de-Nitrogeno 10.0)
     (concentracion-ambiente Temperatura 16.0)
@@ -48,6 +58,7 @@
 ;                     HECHOS INDEPENDIENTES PARA ACTIVACIÓN
 ; ============================================================================
 ; Prioridad de reglas
+<<<<<<< HEAD
 ; set-strategy <breadth>
 ; set-strategy <breadth>
 ; Mediciones actuales de gases
@@ -73,6 +84,31 @@
     (sensor-ultrasonico sensor estado activo)
     (sensor-temperatura-humedad temperatura estado activo humedad estado activo)
     (sensor-casco casco estado activo)
+=======
+; set-strategy <complexity>
+; Sensores del casco - estado inicial
+    ; (assert
+            ; (sensor-ultrasonico sensor estado activo)
+            ; (sensor-temperatura-humedad temperatura estado activo humedad estado activo)
+            ; (sensor-casco casco estado activo)
+            ; (protocolo-emergencia protocolo estado activo)
+    ; )
+; Mediciones actuales de gases
+    ; (assert (concentracion-gas Oxigeno 17)
+    ;         (concentracion-gas Metano 0.2)
+    ;         (concentracion-gas Monoxido-de-Carbono 15.0)
+    ;         (concentracion-gas Dioxido-de-Carbono 0.3)
+    ;         (concentracion-gas Sulfuro-de-Hidrogeno 1.0)
+    ;         (concentracion-gas Dioxido-de-Nitrogeno 1.0)
+    ;         (concentracion-ambiente Temperatura 15.0)
+    ;         (concentracion-ambiente Humedad 30.0)
+    ; )
+; REGLA 1: Establecer el inicio del programa
+(defrule inicio-casco
+    (sensor-ultrasonico estado activo)
+    (sensor-temperatura-humedad temperatura estado activo humedad estado activo)
+    (sensor-casco estado activo)
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
     =>
     (assert(sistema-inicio monitoreo estado activo))
     (printout t "1-SISTEMA DE MONITOREO ACTIVADO" crlf)
@@ -88,6 +124,7 @@
 ; ============================================================================
 ;                               REGLAS
 ; ============================================================================
+<<<<<<< HEAD
 ;REGLA 1: Evaluación de riesgo por deficiencia de oxígeno, 
 ;avisa cuando el valor es menor o mayor que el mínimo.
 (defrule deficiencia-oxigeno
@@ -107,6 +144,26 @@
     (assert(sistema-alerta-activo $?antes ?tipo estado activo $?despues))
     (printout t "3-ALERTA OXIGENO: " ?nombre " = " ?valor_medido  crlf)
 )
+=======
+; REGLA 1: Evaluación de riesgo por deficiencia de oxígeno, 
+; avisa cuando el valor es menor o mayor que el minimo
+; (defrule deficiencia-oxigeno
+;     (sistema-inicio monitoreo estado activo)
+;     (concentracion-gas ?nombre ?valor_medido)
+;     (limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
+;     (gas ?nombre)
+;     (or
+;         (test (> ?minimo ?valor_medido ))
+;         (test (< ?maximo ?valor_medido ))
+;     )
+;     ?ind1 <- (sistema-alertas $?antes ?tipo estado inactivo $?despues)
+;     (sistema-actuadores $? ?tipo $?)
+;     =>
+;     (retract ?ind1)
+;     (assert(sistema-alerta-activo $?antes ?tipo estado activo $?despues))
+;     (printout t "ALERTA OXIGENO: " ?nombre " = " ?valor_medido  crlf)
+; )
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
 ; REGLA 2: Evaluación de riesgo por gases combustibles
 ;1.El Metano es inflamable, mezclado con aire en
 ;concentraciones entre el 5% y el 10% puede formar mezclas explosivas
@@ -115,6 +172,7 @@
 ;concentraciones entre el 4% y el 76% puede formar mezclas explosivas.
 ;3.El polvo puede acumularse en suspensiones en el aire, creando 
 ;un riesgo de explosiones de polvo.
+<<<<<<< HEAD
 ;Conflicto: Esta regla es una agrupación de 2 reglas que crean un conflicto.
 ;La estrategia de ejecutación del programa lo ejecutará según el primero que llegue
 ;a la cola de ejecución
@@ -141,6 +199,29 @@
     =>
     (assert (alerta aviso-medico))
     (printout t "5-AVISO AL MEDICO: el trabajador esta en zona de altos gases de combustión" crlf)
+=======
+;Conflicto
+;Avisa al trabajador activando otra alerta de sistema-alertas
+(defrule gases-combustibles-avisa-trabajador
+(limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
+(gas-combustible $? ?nombre $?)
+(concentracion-ambiente ?nombre ?valor_medido)
+(test (> ?valor_medido ?maximo))
+=>
+(assert (alerta aviso-trabajador))
+(printout t "Aviso al trabajador que esta en zona de altos gases de combustión" crlf)
+)
+
+;Avisa al medico que el trabajador esta en zona peligrosa
+(defrule gases-combustibles-aviso-medico
+(limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
+(gas-combustible $? ?nombre $?)
+(concentracion-gas ?nombre ?valor_medido)
+(test (> ?valor_medido ?maximo))
+=>
+(assert (alerta aviso-medico))
+(printout t "Aviso al medico que el trabajador esta en zona de altos gases de combustión" crlf)
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
 )
 
 
@@ -148,7 +229,10 @@
 ;Dependiendo de la temperatura en relacion con la humedad
 ;una persona tendra diferentes riesgos térmicos
 (defrule riesgo-termico
+<<<<<<< HEAD
 	(sistema-inicio monitoreo estado activo)
+=======
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
     (limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
     (ambiente $? ?var $?)
     (concentracion-ambiente ?nombre ?valor)
@@ -165,6 +249,7 @@
     (not (mensaje-mostrado ?nombre ?valor))
     =>
     (assert (mensaje-mostrado ?nombre ?valor))
+<<<<<<< HEAD
 	(assert (alerta aviso-trabajador))
     (printout t "6-TE ESTAS SOFOCANDO " ?nombre " " ?valor crlf)
 )
@@ -232,4 +317,19 @@
     (assert (sistema-notificaciones-medico $?antes ?tipo estado activo $?despues))
     (printout t "-> SISTEMA-NOTIFICACIONES-MEDICO ACTIVADO" crlf)
 )
+=======
+    (printout t "TE ESTAS SOFOCANDO TONTO " ?nombre " " ?valor crlf)
+)
+; REGLA 4: Evaluación de riesgo por múltiples gases tóxicos
+(defrule gases-toxicos
+(limites-seguridad $? ?nombre ?simbolo nivel_minimo ?minimo nivel_maximo ?maximo $?)
+(gas-toxicos $? ?nombre $?)
+(concentracion-gas ?nombre ?valor_medido)
+(test (> ?valor_medido ?maximo))
+=>
+(assert (alerta gases_alta_toxicidad))
+(printout t "Aviso al trabajador que esta en zona de altos gases de toxicidad" crlf)
+)
+; REGLA 5: 
+>>>>>>> 8895d797eaf39f31e96d0a73feb21b581a8227c4
 
